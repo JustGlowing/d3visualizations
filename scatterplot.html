@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Scatterplot with tooltip and JSON example</title>
+    <style type="text/css">
+      /* style for the axes */
+      .axis path,
+      .axis line {
+        fill: none;
+        stroke: gray;
+        shape-rendering: crispEdges;
+      }
+      
+      .axis text {
+        font-family: sans-serif;
+        font-size: 12px;
+      }
+      
+      /* style for the tooltip */
+      #tooltip {
+        position: absolute;
+        width: 100px;
+        height: auto;
+        padding: 10px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+        opacity: 0.7;
+      }
+      
+      #tooltip.hidden {
+        display: none;
+      }
+      
+      #tooltip p {
+        margin: 0;
+        font-family: sans-serif;
+        font-size: 12px;
+        line-height: 20px;
+      } 
+    </style>
+
+  <script type="text/javascript" src="http://d3js.org/d3.v2.min.js"></script> <!-- d3js include -->
+
+  <script type="text/javascript">
+      function draw(data) {
+        "use strict";
+
+        function mouseover(d){
+          d3.select(this).attr("r", 8) // highlight the point
+
+          //Update the tooltip position and value
+          d3.select("#tooltip")
+            .style("left", d3.select(this).attr("cx") + "px")
+            .style("top", d3.select(this).attr("cy") + "px")
+            .select("#value")
+            .text(d.x+", "+d.y);
+           
+            d3.select("#tooltip").classed("hidden", false);
+        }
+
+        function mouseout(){
+          d3.select(this).attr("r", 4) // remove the higlight
+          // hide the tooltip again
+          d3.select("#tooltip").classed("hidden", true);
+        }
+
+        function indexToColor(d){
+          return ['blue', 'green', 'red', 'brown', 'blueviolet', 'olive'][d.color]
+        }
+
+        // setting up the plotting area
+        var w=600, h=400;
+        var pad = {left: 30, right: 10, top: 20, bottom: 20};
+
+        var svg = d3.select("body")
+          .append("svg")
+            .attr("height", h)
+            .attr("width", w);
+
+        svg.append("rect")
+          .attr("x", pad.left).attr("y",pad.top)
+          .attr("width", w-(pad.left+pad.right))
+          .attr("height",h-(pad.top+pad.bottom))
+          .attr("stroke", "gray")
+          .attr("fill", "rgb(250,250,250)");
+
+        // computing the scales
+        var xMin = d3.min(data, function(d) { return Number(d.x); });
+        var xMax = d3.max(data, function(d) { return Number(d.x); });
+        var yMin = d3.min(data, function(d) { return Number(d.y); });
+        var yMax = d3.max(data, function(d) { return Number(d.y); });
+
+        var xScale = d3.scale.linear().domain([xMin, xMax]).range([pad.left*2, w-pad.right*2]);
+        var yScale = d3.scale.linear().domain([yMin, yMax]).range([h-pad.bottom*2, pad.top*2]);
+
+        // setting up the axes
+        var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+        var xAxisGroup = svg.append("g")
+          .attr("class", "axis")
+          .attr("transform", "translate(0,"+(h-pad.bottom)+")")
+          .call(xAxis);
+
+        var yAxis = d3.svg.axis().scale(yScale).orient("left");
+        var yAxisGroup = svg.append("g")
+          .attr("class", "axis")
+          .attr("transform", "translate("+(pad.left)+",0)")
+          .call(yAxis);
+
+        // add the dots
+        var circles = svg.selectAll("circle")
+          .data(data)
+          .enter()
+            .append("circle")
+              .attr("cx", function(d) { return xScale(d.x); })
+              .attr("cy", function(d) { return yScale(d.y); })
+              .attr("r", 4)
+              .attr("opacity", 0.8)
+              .attr("fill", indexToColor)
+            .on("mouseover",mouseover) // events handlers
+            .on("mouseout", mouseout)
+      }
+  </script>
+  </head>
+
+  <body>
+    <!-- this div is invisible at the beginning -->
+    <div id="tooltip" class="hidden">
+         <p><strong>Point</strong></p>
+        <p><span id="value">100</span></p>
+    </div>  
+    <script type="text/javascript">
+      d3.json("scatter_data.json", draw);
+    </script>
+  </body>
+
+</html>
