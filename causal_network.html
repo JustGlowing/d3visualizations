@@ -1,0 +1,181 @@
+<!-- Inspired by http://jsfiddle.net/nrabinowitz/QMKm3/ -->
+<!doctype html>
+<html>
+  <head>
+    <title>Causal Network</title>
+    <style type="text/css">
+      body { 
+        overflow: hidden; /* hides the scrollings bars */
+      }
+
+      circle.node {
+      stroke: #fff;
+      stroke-width: 3px;
+      }
+      line.link {
+      stroke-width: 2px;
+      stroke: #999;
+      stroke-opacity: 0.6;
+      }
+      marker#arrow {
+      stroke: #999;
+      fill: #999;
+      }
+
+      /* style for the tooltip */
+      #tooltip {
+        position: absolute;
+        width: 450px;
+        height: auto;
+        padding: 10px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+        opacity: 0.7;
+      }
+      
+      #tooltip.hidden {
+        display: none;
+      }
+      
+      #tooltip p {
+        margin: 0;
+        font-family: sans-serif;
+        font-size: 12px;
+        line-height: 20px;
+      }
+    </style>
+    <script type="text/javascript" src="http://d3js.org/d3.v2.min.js"></script> <!-- d3js include -->
+    <script type="text/javascript">
+      function draw(json) {
+        var w = 600,
+            h = 600,
+            fill = d3.scale.category20();
+      
+        var vis = d3.select("#cloud")
+          .append("svg:svg")
+            .attr("width", w)
+            .attr("height", h)
+            .attr("pointer-events", "all")
+          .append('svg:g')
+            .call(d3.behavior.zoom().on("zoom", redraw))
+          .append('svg:g');
+      
+        vis.append('svg:rect')
+            .attr('width', w)
+            .attr('height', h)
+            .attr('fill', 'white');
+
+        /* function that implements zoom and translation */
+        function redraw() {
+          //console.log("here", d3.event.translate, d3.event.scale);
+          vis.attr("transform",
+              "translate(" + d3.event.translate + ")"
+              + " scale(" + d3.event.scale + ")");
+        }
+
+        function mouseover(d){
+          d3.select(this).attr("r", 15) // highlight the point
+
+          //Update the tooltip position and value
+          d3.select("#tooltip")
+            .select("#value")
+            .text(d.sentence);
+          d3.select("#tooltip").select("#word").text(d.name); 
+          d3.select("#tooltip").classed("hidden", false);
+        }
+
+        function mouseout(){
+          d3.select(this).attr("r", 8) // remove the higlight
+          // hide the tooltip again
+          d3.select("#tooltip").classed("hidden", true);
+        }
+
+        var force = d3.layout.force()
+        	//.gravity(.01)
+            .friction(.05)
+            .charge(-150)
+            .linkDistance(250)
+            .nodes(json.nodes)
+            .links(json.links)
+            .size([w, h])
+            .start();
+    
+        var link = vis.selectAll("line.link")
+            .data(json.links)
+          .enter().append("svg:line")
+            .attr("class", "link")
+            .attr("marker-end", "url(#arrow)")
+            // arrow tickness is related to the value field
+            .style("stroke-width", function(d) { return 1.5; })
+            .attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+    
+        var node = vis.selectAll("circle.node")
+            .data(json.nodes)
+          .enter().append("svg:circle")
+            .attr("class", "node")
+            .attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; })
+            .attr("r", 10)
+            .attr("opacity","0.2")           	
+            .style("fill", function(d) { return fill(d.group); })
+            .on("mouseover",mouseover) // events handlers
+            .on("mouseout", mouseout)
+            .call(force.drag);
+
+        node.append("svg:title") // name will also be showed by the browser tooltip
+            .text(function(d) { return d.name; });
+
+
+        var labels = vis.append("g").selectAll("text")
+            .data(force.nodes())
+           .enter().append("svg:text")
+            .attr("x", 12)
+            .attr("y", ".31em")
+            .text(function(d) { return d.name; })
+            .style("fill", "#000")
+            .style("font-family", "arial")
+            .style("font-size", 12);
+
+        vis.style("opacity", 1e-6)
+          .transition()
+            .duration(1000)
+            .style("opacity", 1);
+    
+        force.on("tick", function() {
+          link.attr("x1", function(d) { return d.source.x; })
+              .attr("y1", function(d) { return d.source.y; })
+              .attr("x2", function(d) { return d.target.x; })
+              .attr("y2", function(d) { return d.target.y; });
+    
+          node.attr("cx", function(d) { return d.x; })
+              .attr("cy", function(d) { return d.y; });
+
+          labels.attr("x", function(d) { return d.x; })  // for the labels
+              .attr("y", function(d) { return d.y; }); 
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="tooltip" class="hidden">
+         <p><strong><span id="word">Point</span></strong></p>
+         <p><span id="value">100</span></p>
+    </div>  
+    <svg id="cloud" width="600" height="600">
+      <defs>
+        <marker id="arrow" viewbox="0 -5 10 10" refX="18" refY="0"
+          markerWidth="4" markerHeight="4" orient="auto">
+          <path d="M0,-5L10,0L0,5Z">
+        </marker>
+      </defs>
+    </svg>
+    <script type="text/javascript">
+      d3.json("https://dl.dropboxusercontent.com/s/38l2dhqv8jvyoxs/causal_network.json?dl=1&token_hash=AAEyiqJV71CGm0_PWrQez8ImxaSEFDLTLeobrp2jnDd39Q", draw);
+    </script>
+  </body>
+</html>
